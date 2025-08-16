@@ -50,7 +50,7 @@ google-auth-oauthlib
 
 ## ⚙️ Playlists Configuration
 
-To automatically add uploaded videos to the right playlist, update the `config.json` file in the project root:
+To automatically add uploaded videos to the right playlist, update the `config.py` file in the project root:
 
 ```json
 {
@@ -82,7 +82,7 @@ videos/landscape/
 2. Run the uploader script:
 
 ```bash
-python uploader.py
+python upload_folder.py
 ```
 
 3. The script will:
