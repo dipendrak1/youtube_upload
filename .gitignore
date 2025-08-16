@@ -1,0 +1,13 @@
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Credentials and tokens
+client_secrets.json
+token.pickle
+
+# Logs
+*.log
