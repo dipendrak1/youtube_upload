@@ -44,7 +44,7 @@ google-auth-oauthlib
 
 1. Run the script once.  
 2. A browser window will open for Google login & YouTube permissions.  
-3. After successful authentication, a `token.json` file will be created for reuse.  
+3. After successful authentication, a `token.pickle` file will be created for reuse.  
 
 ---
 
