@@ -57,7 +57,7 @@ def upload_video(youtube, file_path, playlist_id, category="shorts"):
         },
         "status": {
             "privacyStatus": "unlisted",   # 🔥 Force Unlisted
-            "selfDeclaredMadeForKids": False,  # 🔥 Mark as made for kids
+            "selfDeclaredMadeForKids": False,  # 🔥 Mark as Not made for kids
         },
     }
 
