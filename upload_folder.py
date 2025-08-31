@@ -10,7 +10,7 @@ from config import PLAYLISTS
 
 # --- CONFIG ---
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
-CREDENTIALS_FILE = "client_secret.json"
+CREDENTIALS_FILE = "client_secrets.json"
 TOKEN_FILE = "token.pickle"
 
 # Video folders
