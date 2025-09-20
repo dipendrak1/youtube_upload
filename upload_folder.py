@@ -7,9 +7,16 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import pickle
 from config import PLAYLISTS
+import mimetypes  # <-- ADDED
 
 # --- CONFIG ---
-SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+# SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+
+SCOPES = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.force-ssl",
+]
+
 CREDENTIALS_FILE = "client_secrets.json"
 TOKEN_FILE = "token.pickle"
 
@@ -20,6 +27,9 @@ VIDEO_DIRS = {
 }
 
 UPLOADED_DIR = "uploaded"
+
+# Allowed video extensions (added)
+ALLOWED_EXTS = (".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v")
 
 # --- LOGGING ---
 logging.basicConfig(
@@ -61,7 +71,14 @@ def upload_video(youtube, file_path, playlist_id, category="shorts"):
         },
     }
 
-    media_file = MediaFileUpload(file_path, chunksize=-1, resumable=True, mimetype="video/mp4")  # 🔥 Explicit MIME
+    # determine mime type dynamically (changed)
+    mime_type, _ = mimetypes.guess_type(file_path)
+    media_file = MediaFileUpload(
+        file_path,
+        chunksize=-1,
+        resumable=True,
+        mimetype=(mime_type or "video/mp4"),  # fallback to video/mp4
+    )  # 🔥 Explicit MIME
 
     request = youtube.videos().insert(
         part="snippet,status",
@@ -99,7 +116,8 @@ def main():
     for category, folder in VIDEO_DIRS.items():
         os.makedirs(folder, exist_ok=True)
         for file in os.listdir(folder):
-            if file.lower().endswith(".mp4"):
+            # allow multiple video extensions (changed)
+            if file.lower().endswith(ALLOWED_EXTS):
                 videos_to_upload.append((os.path.join(folder, file), category))
 
     if not videos_to_upload:
