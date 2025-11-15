@@ -40,17 +40,41 @@ logging.basicConfig(
 # --- AUTH ---
 def get_authenticated_service():
     creds = None
+
+    # Load existing credentials if present
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, "rb") as token:
             creds = pickle.load(token)
+
+    # Case 1: No credentials or invalid → need new auth flow
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            try:
+                # Try refresh
+                creds.refresh(Request())
+                logging.info("🔄 Token refreshed successfully")
+            except Exception as e:
+                logging.warning(f"⚠ Token refresh failed: {e}")
+                logging.warning("🗑 Deleting token.pickle and requesting new OAuth login...")
+
+                # Delete token to force new login
+                try:
+                    os.remove(TOKEN_FILE)
+                except:
+                    pass
+                creds = None  # force new flow
         else:
+            logging.info("🔐 No valid token found. Starting OAuth login...")
+
+        # If still no creds after refresh attempt → run OAuth flow
+        if not creds or not creds.valid:
             flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
             creds = flow.run_local_server(port=0)
-        with open(TOKEN_FILE, "wb") as token:
-            pickle.dump(creds, token)
+
+            # Save new token
+            with open(TOKEN_FILE, "wb") as token:
+                pickle.dump(creds, token)
+
     return build("youtube", "v3", credentials=creds)
 
 # --- UPLOAD ---
