@@ -134,7 +134,7 @@ def upload_video(youtube, file_path, playlist_id, category="shorts"):
 
 # --- MAIN ---
 def main():
-    youtube = get_authenticated_service()
+    
 
     videos_to_upload = []
     for category, folder in VIDEO_DIRS.items():
@@ -160,7 +160,8 @@ def main():
     if confirm.lower() != "y":
         print("❌ Upload cancelled.")
         return
-
+    
+    youtube = get_authenticated_service()
     os.makedirs(UPLOADED_DIR, exist_ok=True)
 
     for file_path, category in videos_to_upload:
