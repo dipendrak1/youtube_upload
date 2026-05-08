@@ -35,6 +35,7 @@ ALLOWED_EXTS = (".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 
 # --- AUTH ---
@@ -164,17 +165,53 @@ def main():
     youtube = get_authenticated_service()
     os.makedirs(UPLOADED_DIR, exist_ok=True)
 
-    for file_path, category in videos_to_upload:
+    total_videos = len(videos_to_upload)
+
+    for index, (file_path, category) in enumerate(videos_to_upload, start=1):
         playlist_id = PLAYLISTS[category]
+
         try:
+            logging.info(
+                f"🚀 [{index}/{total_videos}] Starting upload: "
+                f"{os.path.basename(file_path)}"
+            )
+
             upload_video(youtube, file_path, playlist_id, category)
+
             # Move uploaded file
             dest_folder = os.path.join(UPLOADED_DIR, category)
             os.makedirs(dest_folder, exist_ok=True)
-            os.rename(file_path, os.path.join(dest_folder, os.path.basename(file_path)))
-            time.sleep(2)  # Avoid quota issues
+
+            os.rename(
+                file_path,
+                os.path.join(dest_folder, os.path.basename(file_path))
+            )
+
+            logging.info(
+                f"✅ [{index}/{total_videos}] Completed: "
+                f"{os.path.basename(file_path)}"
+            )
+
+            time.sleep(2)
+
         except Exception as e:
-            logging.error(f"❌ Failed to upload {file_path}: {e}")
+            logging.error(
+                f"❌ [{index}/{total_videos}] Failed: "
+                f"{os.path.basename(file_path)}: {e}"
+            )
+
+            # Stop immediately if quota exceeded
+            error_str = str(e)
+
+            if (
+                "quotaExceeded" in error_str
+                or "exceeded your quota" in error_str
+            ):
+                logging.error(
+                    f"🛑 Quota exceeded after "
+                    f"{index - 1}/{total_videos} uploads. Stopping."
+                )
+                break
 
 if __name__ == "__main__":
     main()
