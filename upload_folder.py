@@ -200,18 +200,21 @@ def main():
                 f"{os.path.basename(file_path)}: {e}"
             )
 
-            # Stop immediately if quota exceeded
             error_str = str(e)
 
-            if (
-                "quotaExceeded" in error_str
-                or "exceeded your quota" in error_str
-            ):
+            # Stop immediately for quota/upload limit errors
+            stop_errors = [
+                "quotaExceeded",
+                "exceeded your quota",
+                "uploadLimitExceeded",
+                "exceeded the number of videos they may upload",
+            ]
+
+            if any(err in error_str for err in stop_errors):
                 logging.error(
-                    f"🛑 Quota exceeded after "
-                    f"{index - 1}/{total_videos} uploads. Stopping."
+                    f"🛑 Upload stopped after "
+                    f"{index - 1}/{total_videos} successful uploads."
                 )
                 break
-
 if __name__ == "__main__":
     main()
