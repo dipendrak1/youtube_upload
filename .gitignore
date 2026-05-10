@@ -11,3 +11,7 @@ token.pickle
 
 # Logs
 *.log
+
+#video folders
+videos/
+uploaded/
