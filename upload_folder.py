@@ -1,5 +1,6 @@
 import os
 import logging
+from random import random
 import time
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -8,6 +9,7 @@ from google.auth.transport.requests import Request
 import pickle
 from config import PLAYLISTS
 import mimetypes  # <-- ADDED
+import random
 
 # --- CONFIG ---
 # SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
@@ -192,7 +194,7 @@ def main():
                 f"{os.path.basename(file_path)}"
             )
 
-            time.sleep(2)
+            time.sleep(random.randint(10, 30))
 
         except Exception as e:
             logging.error(
