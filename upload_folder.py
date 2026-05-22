@@ -194,7 +194,7 @@ def main():
                 f"{os.path.basename(file_path)}"
             )
 
-            time.sleep(random.randint(10, 30))
+            time.sleep(random.randint(5, 15))
 
         except Exception as e:
             logging.error(
