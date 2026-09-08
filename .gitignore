@@ -13,6 +13,7 @@ token.pickle
 # Logs
 *.log
 
-#video folders
+# Video folders
+downloads/
 videos/
 uploaded/
