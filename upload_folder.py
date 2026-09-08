@@ -137,7 +137,13 @@ def upload_video(youtube, file_path, playlist_id, category="shorts"):
 
 # --- MAIN ---
 def main():
-    
+    cleanup_choice = ""
+    while cleanup_choice not in ("b", "d"):
+        cleanup_choice = input(
+            "After a successful upload, move files to backup or delete them? (b/d): "
+        ).strip().lower()
+
+    move_to_backup = cleanup_choice == "b"
 
     videos_to_upload = []
     for category, folder in VIDEO_DIRS.items():
@@ -180,18 +186,21 @@ def main():
 
             upload_video(youtube, file_path, playlist_id, category)
 
-            # Move uploaded file
-            dest_folder = os.path.join(UPLOADED_DIR, category)
-            os.makedirs(dest_folder, exist_ok=True)
-
-            os.rename(
-                file_path,
-                os.path.join(dest_folder, os.path.basename(file_path))
-            )
+            if move_to_backup:
+                dest_folder = os.path.join(UPLOADED_DIR, category)
+                os.makedirs(dest_folder, exist_ok=True)
+                os.rename(
+                    file_path,
+                    os.path.join(dest_folder, os.path.basename(file_path))
+                )
+                cleanup_message = "moved to backup"
+            else:
+                os.remove(file_path)
+                cleanup_message = "deleted"
 
             logging.info(
                 f"✅ [{index}/{total_videos}] Completed: "
-                f"{os.path.basename(file_path)}"
+                f"{os.path.basename(file_path)} ({cleanup_message})"
             )
 
             time.sleep(random.randint(5, 15))

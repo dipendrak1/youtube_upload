@@ -63,6 +63,16 @@ Example:
 project/client_secrets.json
 ```
 
+Create a local `.env` file by copying `.env.example`, then add your playlist IDs:
+
+```env
+YOUTUBE_SHORTS_PLAYLIST_ID=your_shorts_playlist_id
+YOUTUBE_LANDSCAPE_PLAYLIST_ID=your_landscape_playlist_id
+```
+
+The `.env` file is ignored by Git. Do not put real playlist IDs directly in
+`config.py`.
+
 ---
 
 # 📦 Install Dependencies
@@ -103,24 +113,14 @@ If refresh fails, the script deletes the old token and requests login again.
 
 # ⚙️ Playlist Configuration
 
-Update `config.py` with your actual playlist IDs.
+Playlist IDs are loaded from the local `.env` file by `config.py`.
 
 Example:
 
 ```python
-# config.py
-
-PLAYLISTS = {
-    "shorts": "YOUR_SHORTS_PLAYLIST_ID",
-    "landscape": "YOUR_LANDSCAPE_PLAYLIST_ID",
-}
+YOUTUBE_SHORTS_PLAYLIST_ID=YOUR_SHORTS_PLAYLIST_ID
+YOUTUBE_LANDSCAPE_PLAYLIST_ID=YOUR_LANDSCAPE_PLAYLIST_ID
 ```
-
-Replace:
-- `YOUR_SHORTS_PLAYLIST_ID`
-- `YOUR_LANDSCAPE_PLAYLIST_ID`
-
-with your actual YouTube playlist IDs.
 
 You can find playlist IDs from playlist URLs:
 
@@ -235,6 +235,7 @@ Uploaded videos are automatically configured as:
 ```gitignore
 client_secrets.json
 token.pickle
+.env
 uploaded/
 __pycache__/
 ```
