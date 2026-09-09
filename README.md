@@ -1,257 +1,115 @@
-# YouTube Uploader Automation
+# YouTube Upload and Download
 
-This project automates uploading videos to YouTube (Shorts & Landscape) using the YouTube Data API v3.
+This application uploads local videos to YouTube playlists and downloads YouTube videos through one command-line entry point.
 
-It can:
-- Upload videos automatically
-- Add videos to playlists
-- Upload as **Unlisted**
-- Mark videos as **Not Made for Kids**
-- Move uploaded files into organized folders
-- Stop automatically if YouTube API quota is exceeded
-
----
-
-# 🔑 Prerequisites
-
-## 1. Create Google OAuth Credentials
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/?utm_source=chatgpt.com)
-2. Create a new project (or use an existing one)
-3. Enable **YouTube Data API v3**
-4. Create **OAuth Client ID**
-5. Select:
-   - Application Type → **Desktop App**
-6. Download the OAuth credentials JSON file
-7. Rename it to:
-
-```bash
-client_secrets.json
-```
-
----
-
-# 📂 Project Structure
+## Project structure
 
 ```text
-project/
-│
-├── upload_folder.py
-├── config.py
-├── client_secrets.json
-├── token.pickle
+.
+├── main.py
 ├── requirements.txt
-│
+├── .env.example
+├── src/
+│   ├── settings.py
+│   ├── upload/
+│   │   └── youtube_uploader.py
+│   └── download/
+│       └── youtube_downloader.py
 ├── videos/
 │   ├── shorts/
 │   └── landscape/
-│
-└── uploaded/
-    ├── shorts/
-    └── landscape/
+├── uploaded/
+└── downloads/
 ```
+├── data/
+│   └── upload_history.db
 
----
+`Settings` owns paths and environment-backed configuration. `YouTubeUploader` owns OAuth, video uploads, playlist insertion, cleanup, and quota handling. `YouTubeDownloader` owns `yt-dlp` downloads. `main.py` orchestrates both services.
 
-# ⚙️ Setup
+## Prerequisites
 
-Place the `client_secrets.json` file in the project root folder.
-
-Example:
-
-```text
-project/client_secrets.json
-```
-
-Create a local `.env` file by copying `.env.example`, then add your playlist IDs:
+1. Enable YouTube Data API v3 in Google Cloud.
+2. Create a Desktop OAuth client and place the downloaded file at `client_secrets.json` in the project root.
+3. Create a local `.env` file from `.env.example` and set both playlist IDs:
 
 ```env
 YOUTUBE_SHORTS_PLAYLIST_ID=your_shorts_playlist_id
 YOUTUBE_LANDSCAPE_PLAYLIST_ID=your_landscape_playlist_id
 ```
 
-The `.env` file is ignored by Git. Do not put real playlist IDs directly in
-`config.py`.
+Do not commit `client_secrets.json`, `token.pickle`, or `.env`.
 
----
+The downloader also requires a JavaScript runtime for current YouTube
+challenge solving. Install Deno on Windows with:
 
-# 📦 Install Dependencies
-
-Install required packages:
-
-```bash
-pip install -r requirements.txt
+```powershell
+winget install --id DenoLand.Deno --exact --scope user
 ```
 
----
+## Upload history
 
-# 📄 Example requirements.txt
+The application stores upload history locally in SQLite at
+`data/upload_history.db`. The database is ignored by Git and does not require
+a separate database server.
 
-```text
-google-api-python-client
-google-auth-httplib2
-google-auth-oauthlib
+To import existing uploads from the authenticated YouTube channel and link
+local files already in `uploaded/`, run:
+
+```powershell
+python main.py history-sync
 ```
 
----
+The sync records YouTube video IDs, titles, upload dates, statuses, and local
+file metadata. A local file is linked only when its filename stem exactly
+matches one unique YouTube title; uncertain matches are left unlinked rather
+than guessed.
 
-# 🔑 First-Time Authentication
+During normal uploads, each file is checked against successful history records
+using its SHA-256 hash. Files already uploaded are skipped, even if their
+filename has changed. New successful uploads are added to the database after
+the YouTube upload and playlist insertion complete.
 
-1. Run the uploader script once
-2. Browser login window will open
-3. Login with your Google/YouTube account
-4. Grant YouTube permissions
-5. After successful login:
-   - `token.pickle` will be generated automatically
-   - Future uploads will reuse this token
+## Setup
 
-If the token expires, the script automatically refreshes it.
+From the project root on Windows PowerShell:
 
-If refresh fails, the script deletes the old token and requests login again.
-
----
-
-# ⚙️ Playlist Configuration
-
-Playlist IDs are loaded from the local `.env` file by `config.py`.
-
-Example:
-
-```python
-YOUTUBE_SHORTS_PLAYLIST_ID=YOUR_SHORTS_PLAYLIST_ID
-YOUTUBE_LANDSCAPE_PLAYLIST_ID=YOUR_LANDSCAPE_PLAYLIST_ID
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
-You can find playlist IDs from playlist URLs:
+On later sessions, activate the existing environment before running commands:
 
-```text
-https://www.youtube.com/playlist?list=YOUR_PLAYLIST_ID
+```powershell
+.\.venv\Scripts\Activate.ps1
 ```
 
----
+## Upload videos
 
-# 📹 Supported Video Formats
+Place supported files (`.mp4`, `.mov`, `.mkv`, `.avi`, `.webm`, or `.m4v`) in `videos/shorts/` or `videos/landscape/`, then run:
 
-The uploader automatically detects and uploads these formats:
-
-```text
-.mp4
-.mov
-.mkv
-.avi
-.webm
-.m4v
+```powershell
+python main.py upload
 ```
 
-MIME type is detected automatically during upload.
+The application asks whether successfully uploaded files should be moved into `uploaded/<category>/` or deleted. It then shows a summary and asks for one upload scope choice: enter `a` for all detected files or a number for the first `N` files, followed by upload confirmation. The first upload opens the Google OAuth flow and stores the refreshed credentials in `token.pickle`.
 
----
+Uploads retain the existing behavior: videos are unlisted, marked as not made for kids, categorized as People & Blogs, added to the configured playlist, and processing stops on YouTube quota or upload-limit errors.
 
-# ▶️ Usage
+## Download a video
 
-## 1. Place Videos
+Run the downloader with a YouTube URL. Files are written to `downloads/` using the video title as the filename:
 
-Put videos inside:
-
-```text
-videos/shorts/
-videos/landscape/
+```powershell
+python main.py download "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
-Example:
+## Validation
 
-```text
-videos/shorts/video1.mp4
-videos/landscape/travel_vlog.mov
+The application can be checked without making an API request with:
+
+```powershell
+python -m compileall -q main.py src
+python main.py --help
 ```
-
----
-
-## 2. Run the Script
-
-```bash
-python upload_folder.py
-```
-
----
-
-# 📊 Upload Flow
-
-The script will:
-
-1. Scan all supported videos
-2. Show upload summary
-3. Ask for confirmation
-4. Upload videos one by one
-5. Add uploaded videos to playlists
-6. Move uploaded videos to:
-   - `uploaded/shorts/`
-   - `uploaded/landscape/`
-
----
-
-# 📝 Example Logs
-
-```text
-2026-05-08 19:46:11 [INFO] 🚀 [1/20] Starting upload: sample.mp4
-
-2026-05-08 19:47:03 [INFO] ✅ [1/20] Completed: sample.mp4
-```
-
----
-
-# 🛑 Quota Handling
-
-If YouTube API quota is exceeded, uploads stop immediately.
-
-Example:
-
-```text
-2026-05-08 20:12:45 [ERROR] 🛑 YouTube API quota exceeded. Stopping further uploads.
-```
-
-This prevents unnecessary processing of remaining videos.
-
----
-
-# 🔒 Upload Settings
-
-Uploaded videos are automatically configured as:
-
-- Privacy → **Unlisted**
-- Audience → **Not Made for Kids**
-- Category → **People & Blogs**
-
----
-
-# 📌 Notes
-
-- Do not share:
-  - `client_secrets.json`
-  - `token.pickle`
-
-- Recommended `.gitignore`:
-
-```gitignore
-client_secrets.json
-token.pickle
-.env
-uploaded/
-__pycache__/
-```
-
----
-
-# 🚀 Future Improvements (Optional)
-
-Possible enhancements:
-- Scheduled uploads
-- Thumbnail uploads
-- Automatic titles/descriptions
-- Retry mechanism
-- Multi-channel support
-- Upload statistics
-- GUI/Desktop app
-- Docker support
-
----
