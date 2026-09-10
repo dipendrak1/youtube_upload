@@ -40,6 +40,15 @@ def print_history_report(report: dict) -> None:
 
 
 def prompt_for_command() -> argparse.Namespace | None:
+    def prompt_upload_mode() -> argparse.Namespace:
+        while True:
+            mode = input("Run a dry run or actual upload? (d/a): ").strip().lower()
+            if mode == "d":
+                return argparse.Namespace(command="upload", dry_run=True)
+            if mode == "a":
+                return argparse.Namespace(command="upload", dry_run=False)
+            print("Enter 'd' for dry run or 'a' for actual upload.")
+
     while True:
         print("\nYouTube application")
         print("1. Upload videos")
@@ -51,7 +60,7 @@ def prompt_for_command() -> argparse.Namespace | None:
         choice = input("Choose an option: ").strip().lower()
 
         if choice == "1":
-            return argparse.Namespace(command="upload")
+            return prompt_upload_mode()
         if choice == "2":
             url = input("Enter the YouTube URL: ").strip()
             if url:
@@ -71,9 +80,22 @@ def prompt_for_command() -> argparse.Namespace | None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Upload or download YouTube videos.")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        dest="global_dry_run",
+        help="Preview the upload workflow when no command is supplied.",
+    )
     commands = parser.add_subparsers(dest="command")
 
-    commands.add_parser("upload", help="Upload videos from the configured folders.")
+    upload_parser = commands.add_parser(
+        "upload", help="Upload videos from the configured folders."
+    )
+    upload_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview files and actions without authenticating or changing files.",
+    )
 
     download_parser = commands.add_parser(
         "download", help="Download a YouTube video."
@@ -111,16 +133,22 @@ def main() -> None:
     )
     args = build_parser().parse_args()
     if args.command is None:
-        args = prompt_for_command()
-        if args is None:
-            return
+        if args.global_dry_run:
+            args = argparse.Namespace(command="upload", dry_run=True)
+        else:
+            args = prompt_for_command()
+    if args is None:
+        return
     settings = Settings.from_project_root()
 
     if args.command == "health-check":
         if not run_health_check(settings):
             raise SystemExit(1)
     elif args.command == "upload":
-        YouTubeUploader(settings).run()
+        YouTubeUploader(settings).run(
+            dry_run=getattr(args, "dry_run", False)
+            or getattr(args, "global_dry_run", False)
+        )
     elif args.command == "download":
         YouTubeDownloader(settings).download(args.url)
     elif args.command == "history-sync":

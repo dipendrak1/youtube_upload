@@ -108,12 +108,20 @@ Place supported files (`.mp4`, `.mov`, `.mkv`, `.avi`, `.webm`, or `.m4v`) in `v
 python main.py
 ```
 
-Choose `Upload videos` from the menu. The existing command form,
+Choose `Upload videos` from the menu, then choose `d` for a dry-run preview or
+`a` for an actual upload. The existing command form,
 `python main.py upload`, remains available for scripted use.
+
+To preview the files, duplicate detection, playlists, and cleanup actions
+without authenticating or changing any files, run:
+
+```powershell
+python main.py upload --dry-run
+```
 
 The application asks whether successfully uploaded files should be moved into `uploaded/<category>/` or deleted. It then shows a summary and asks for one upload scope choice: enter `a` for all detected files or a number for the first `N` files, followed by upload confirmation. The first upload opens the Google OAuth flow and stores the refreshed credentials in `token.pickle`.
 
-Uploads retain the existing behavior: videos are unlisted, marked as not made for kids, categorized as People & Blogs, added to the configured playlist, and processing stops on YouTube quota or upload-limit errors.
+Uploads retain the existing behavior: videos are unlisted, marked as not made for kids, categorized as People & Blogs, added to the configured playlist, and processing stops on YouTube quota or upload-limit errors. Temporary network failures are retried up to three times, and each batch ends with a summary of successful, skipped, and failed files.
 
 ## Download a video
 
