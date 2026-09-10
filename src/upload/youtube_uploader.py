@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import pickle
 import random
+import stat
 import time
 from typing import Any
 
@@ -181,6 +182,14 @@ class YouTubeUploader:
                 return videos_to_upload[:count]
             print(f"Enter 'a' or a number from 1 to {len(videos_to_upload)}.")
 
+    @staticmethod
+    def _remove_read_only(file_path: Path) -> None:
+        """Allow cleanup of files carrying the Windows read-only attribute."""
+        try:
+            file_path.chmod(file_path.stat().st_mode | stat.S_IWRITE)
+        except OSError:
+            pass
+
     def run(self) -> None:
         move_to_backup = self._ask_cleanup_choice()
         videos_to_upload = self._find_videos()
@@ -247,10 +256,12 @@ class YouTubeUploader:
                 if move_to_backup:
                     destination = self.settings.uploaded_dir / category
                     destination.mkdir(parents=True, exist_ok=True)
+                    self._remove_read_only(file_path)
                     os.rename(file_path, destination / file_path.name)
                     stored_path = destination / file_path.name
                     cleanup_message = "moved to backup"
                 else:
+                    self._remove_read_only(file_path)
                     file_path.unlink()
                     stored_path = None
                     cleanup_message = "deleted"

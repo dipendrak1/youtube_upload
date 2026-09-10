@@ -76,6 +76,35 @@ class UploadHistoryRepository:
             row = connection.execute("SELECT COUNT(*) AS count FROM uploads").fetchone()
         return int(row["count"])
 
+    def report(self, recent_limit: int = 10) -> dict[str, Any]:
+        """Return aggregate counts and the most recent history records."""
+        with self._connect() as connection:
+            total = connection.execute(
+                "SELECT COUNT(*) AS count FROM uploads"
+            ).fetchone()["count"]
+            grouped_queries = {
+                "status": "SELECT status AS name, COUNT(*) AS count "
+                "FROM uploads GROUP BY status ORDER BY status",
+                "category": "SELECT COALESCE(category, '') AS name, COUNT(*) AS count "
+                "FROM uploads GROUP BY category ORDER BY category",
+                "source": "SELECT source AS name, COUNT(*) AS count "
+                "FROM uploads GROUP BY source ORDER BY source",
+            }
+            groups = {
+                group_name: [dict(row) for row in connection.execute(query)]
+                for group_name, query in grouped_queries.items()
+            }
+            recent = [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT title, youtube_video_id, category, status, uploaded_at "
+                    "FROM uploads ORDER BY uploaded_at DESC, id DESC LIMIT ?",
+                    (recent_limit,),
+                )
+            ]
+
+        return {"total": int(total), **groups, "recent": recent}
+
     def find_successful_by_hash(self, file_hash: str) -> sqlite3.Row | None:
         with self._connect() as connection:
             return connection.execute(

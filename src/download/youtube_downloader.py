@@ -15,7 +15,7 @@ class YouTubeDownloader:
         self.settings = settings
 
     @staticmethod
-    def _find_deno() -> str | None:
+    def find_deno() -> str | None:
         deno_path = shutil.which("deno")
         if deno_path:
             return deno_path
@@ -31,7 +31,7 @@ class YouTubeDownloader:
         options = {
             "outtmpl": str(self.settings.downloads_dir / "%(title)s.%(ext)s"),
         }
-        deno_path = self._find_deno()
+        deno_path = self.find_deno()
         if deno_path:
             options["js_runtimes"] = {"deno": {"path": deno_path}}
         with yt_dlp.YoutubeDL(options) as downloader:

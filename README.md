@@ -28,9 +28,10 @@ This application uploads local videos to YouTube playlists and downloads YouTube
 
 ## Prerequisites
 
-1. Enable YouTube Data API v3 in Google Cloud.
-2. Create a Desktop OAuth client and place the downloaded file at `client_secrets.json` in the project root.
-3. Create a local `.env` file from `.env.example` and set both playlist IDs:
+1. Install Python 3.11 or newer.
+2. Enable YouTube Data API v3 in Google Cloud.
+3. Create a Desktop OAuth client and place the downloaded file at `client_secrets.json` in the project root.
+4. Create a local `.env` file from `.env.example` and set both playlist IDs:
 
 ```env
 YOUTUBE_SHORTS_PLAYLIST_ID=your_shorts_playlist_id
@@ -69,6 +70,20 @@ using its SHA-256 hash. Files already uploaded are skipped, even if their
 filename has changed. New successful uploads are added to the database after
 the YouTube upload and playlist insertion complete.
 
+To view a local summary without authenticating with YouTube, run:
+
+```powershell
+python main.py history-report
+```
+
+The report shows totals grouped by status, category, and source, followed by
+the 10 most recent records. Change the number of recent records with
+`--limit`, or use `--limit 0` to show only the grouped totals:
+
+```powershell
+python main.py history-report --limit 25
+```
+
 ## Setup
 
 From the project root on Windows PowerShell:
@@ -90,8 +105,11 @@ On later sessions, activate the existing environment before running commands:
 Place supported files (`.mp4`, `.mov`, `.mkv`, `.avi`, `.webm`, or `.m4v`) in `videos/shorts/` or `videos/landscape/`, then run:
 
 ```powershell
-python main.py upload
+python main.py
 ```
+
+Choose `Upload videos` from the menu. The existing command form,
+`python main.py upload`, remains available for scripted use.
 
 The application asks whether successfully uploaded files should be moved into `uploaded/<category>/` or deleted. It then shows a summary and asks for one upload scope choice: enter `a` for all detected files or a number for the first `N` files, followed by upload confirmation. The first upload opens the Google OAuth flow and stores the refreshed credentials in `token.pickle`.
 
@@ -99,11 +117,27 @@ Uploads retain the existing behavior: videos are unlisted, marked as not made fo
 
 ## Download a video
 
-Run the downloader with a YouTube URL. Files are written to `downloads/` using the video title as the filename:
+Run `python main.py`, choose `Download a video`, and enter the YouTube URL.
+Files are written to `downloads/` using the video title as the filename. The
+existing command form is also supported:
 
 ```powershell
 python main.py download "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
+
+## Runtime health check
+
+Run `python main.py`, choose `Run runtime health check`, or run the command
+directly:
+
+```powershell
+python main.py health-check
+```
+
+The check verifies the active Python interpreter, virtual environment, yt-dlp,
+Deno, FFmpeg, project folders, credentials, playlist IDs, and history database.
+It reports advisories for optional first-run items and exits with an error when
+required runtime items are missing.
 
 ## Validation
 
