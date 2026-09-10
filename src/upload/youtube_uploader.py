@@ -252,6 +252,21 @@ class YouTubeUploader:
             for file_name in failed:
                 print(f"    - {file_name}")
 
+    def _existing_upload(self, file_path: Path) -> Any:
+        file_hash = self._file_hash(file_path)
+        existing_upload = self.history.find_successful_by_hash(file_hash)
+        if not existing_upload:
+            existing_upload = self.history.find_successful_by_title(file_path.stem)
+        return existing_upload
+
+    def _upload_status(self, file_path: Path) -> str:
+        existing_upload = self._existing_upload(file_path)
+        if existing_upload:
+            video_id = existing_upload["youtube_video_id"]
+            video_url = f"https://www.youtube.com/watch?v={video_id}"
+            return f"duplicate (skip) - {video_url}"
+        return "ready for upload"
+
     def _print_dry_run(
         self,
         videos_to_upload: list[tuple[Path, str]],
@@ -260,13 +275,10 @@ class YouTubeUploader:
         cleanup_action = "move to uploaded/<category>" if move_to_backup else "delete"
         print("\nDry-run preview (no files will be changed):")
         for file_path, category in videos_to_upload:
-            file_hash = self._file_hash(file_path)
-            existing_upload = self.history.find_successful_by_hash(file_hash)
             playlist_id = self.settings.playlist_id_for(category)
-            if existing_upload:
-                status = f"duplicate of {existing_upload['youtube_video_id']} (skip)"
-            else:
-                status = f"ready for upload -> playlist {playlist_id}"
+            status = self._upload_status(file_path)
+            if status == "ready for upload":
+                status += f" -> playlist {playlist_id}"
             print(f"  {file_path.name} [{category}] - {status}; cleanup: {cleanup_action}")
         print(f"\nWould process {len(videos_to_upload)} file(s).")
 
@@ -286,7 +298,7 @@ class YouTubeUploader:
             ]
             print(f"{category.capitalize()}: {len(category_videos)}")
             for file_path in category_videos:
-                print(f"   - {file_path.name}")
+                print(f"   - {file_path.name} - {self._upload_status(file_path)}")
         print(f"TOTAL: {len(videos_to_upload)} videos\n")
 
         videos_to_upload = self._select_upload_scope(videos_to_upload)
@@ -305,8 +317,7 @@ class YouTubeUploader:
         new_videos = []
         skipped_files = []
         for file_path, category in videos_to_upload:
-            file_hash = self._file_hash(file_path)
-            existing_upload = self.history.find_successful_by_hash(file_hash)
+            existing_upload = self._existing_upload(file_path)
             if existing_upload:
                 LOGGER.info(
                     "Skipping duplicate: %s (already uploaded as %s)",
@@ -315,6 +326,7 @@ class YouTubeUploader:
                 )
                 skipped_files.append(file_path.name)
                 continue
+            file_hash = self._file_hash(file_path)
             file_hashes[file_path] = file_hash
             new_videos.append((file_path, category))
 

@@ -112,3 +112,31 @@ class UploadHistoryRepository:
                 "LIMIT 1",
                 (file_hash,),
             ).fetchone()
+
+    def find_successful_by_title(self, title: str) -> sqlite3.Row | None:
+        with self._connect() as connection:
+            return connection.execute(
+                "SELECT * FROM uploads WHERE title = ? AND status = 'uploaded' "
+                "ORDER BY uploaded_at DESC, id DESC LIMIT 1",
+                (title,),
+            ).fetchone()
+
+    def uploaded_video_ids(self) -> set[str]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT youtube_video_id FROM uploads "
+                "WHERE status = 'uploaded' AND youtube_video_id IS NOT NULL"
+            )
+        return {row[0] for row in rows}
+
+    def remove_uploaded_ids(self, video_ids: set[str]) -> int:
+        if not video_ids:
+            return 0
+        with self._connect() as connection:
+            placeholders = ", ".join("?" for _ in video_ids)
+            cursor = connection.execute(
+                "DELETE FROM uploads WHERE status = 'uploaded' "
+                f"AND youtube_video_id IN ({placeholders})",
+                tuple(video_ids),
+            )
+        return cursor.rowcount

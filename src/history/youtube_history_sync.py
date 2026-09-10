@@ -61,8 +61,35 @@ class YouTubeHistorySynchronizer:
             and file_path.name.lower().endswith(self.settings.allowed_extensions)
         ]
 
+    @staticmethod
+    def _chunks(values: set[str], size: int) -> list[set[str]]:
+        values_list = list(values)
+        return [set(values_list[index : index + size]) for index in range(0, len(values_list), size)]
+
+    def _find_deleted_video_ids(
+        self, youtube: Any, youtube_video_ids: set[str]
+    ) -> set[str]:
+        known_video_ids = self.repository.uploaded_video_ids()
+        missing_from_uploads = known_video_ids - youtube_video_ids
+        deleted_video_ids = set()
+        for video_id_batch in self._chunks(missing_from_uploads, 50):
+            response = youtube.videos().list(
+                part="id",
+                id=",".join(video_id_batch),
+            ).execute()
+            available_ids = {
+                item.get("id") for item in response.get("items", [])
+            }
+            deleted_video_ids.update(video_id_batch - available_ids)
+        return deleted_video_ids
+
     def sync(self, youtube: Any) -> int:
         youtube_items = self._list_uploads(youtube)
+        youtube_video_ids = {
+            item.get("contentDetails", {}).get("videoId")
+            for item in youtube_items
+        }
+        youtube_video_ids.discard(None)
         local_files = self._local_files()
         local_by_title = {}
         for file_path in local_files:
@@ -88,14 +115,20 @@ class YouTubeHistorySynchronizer:
             }
             self.repository.upsert(record)
 
+        deleted_video_ids = self._find_deleted_video_ids(youtube, youtube_video_ids)
+        removed_count = self.repository.remove_uploaded_ids(deleted_video_ids)
+        linked_count = sum(
+            1
+            for item in youtube_items
+            if len(local_by_title.get(item.get("snippet", {}).get("title", ""), []))
+            == 1
+        )
         LOGGER.info(
-            "Synchronized %s YouTube uploads and linked %s local files.",
+            "History sync complete: %s uploads synchronized, %s local backup files "
+            "found, %s linked, %s stale records removed.",
             len(youtube_items),
-            sum(
-                1
-                for item in youtube_items
-                if len(local_by_title.get(item.get("snippet", {}).get("title", ""), []))
-                == 1
-            ),
+            len(local_files),
+            linked_count,
+            removed_count,
         )
         return len(youtube_items)
