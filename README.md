@@ -78,26 +78,30 @@ python main.py history-sync
 The sync records YouTube video IDs, titles, upload dates, statuses, and local
 file metadata. A local file is linked only when its filename stem exactly
 matches one unique YouTube title; uncertain matches are left unlinked rather
-than guessed.
+than guessed. When playlist IDs are configured in `.env`, the sync also uses
+Shorts and landscape playlist membership to classify historical records that
+do not have a matching local file. Playlist membership is read in pages of up
+to 50 videos and consumes YouTube Data API quota, but does not download videos.
 
 During normal uploads, each file is checked against successful history records
 using its SHA-256 hash. Files already uploaded are skipped, even if their
 filename has changed. New successful uploads are added to the database after
 the YouTube upload and playlist insertion complete.
 
-To view a local summary without authenticating with YouTube, run:
+To export the complete local upload history without authenticating with YouTube, run:
 
 ```powershell
 python main.py history-report
 ```
 
-The report shows totals grouped by status, category, and source, followed by
-the 10 most recent records. Change the number of recent records with
-`--limit`, or use `--limit 0` to show only the grouped totals:
+This creates `upload_history.xlsx` in the project root with every history row
+and all database columns. The workbook includes a frozen, filterable header
+row, a clickable `video_url` column for YouTube records, and is ignored by Git
+because it can contain local file paths and upload metadata.
 
-```powershell
-python main.py history-report --limit 25
-```
+The workbook is also refreshed after each successful upload. If the workbook
+is locked or temporarily unavailable, the SQLite history is still updated and
+the export can be regenerated with `python main.py history-report`.
 
 ## Setup
 

@@ -4,3 +4,4 @@ google-auth-oauthlib
 python-dotenv
 yt-dlp
 yt-dlp-ejs
+openpyxl

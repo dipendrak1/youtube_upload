@@ -383,6 +383,19 @@ class YouTubeUploader:
                         "source": "upload",
                     }
                 )
+                try:
+                    exported_count = self.history.export_to_excel(
+                        self.settings.project_root / "upload_history.xlsx"
+                    )
+                    LOGGER.info(
+                        "Upload history Excel file updated (%s records).",
+                        exported_count,
+                    )
+                except Exception as error:
+                    LOGGER.warning(
+                        "Upload history database was updated, but Excel export failed: %s",
+                        error,
+                    )
 
                 LOGGER.info(
                     "[%s/%s] Completed: %s (%s)",

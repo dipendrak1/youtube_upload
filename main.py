@@ -11,35 +11,6 @@ from src.settings import Settings
 from src.upload import YouTubeUploader
 
 
-def print_history_report(report: dict) -> None:
-    print("Upload history report")
-    print("=" * 21)
-    print(f"Total records: {report['total']}")
-
-    for group_name in ("status", "category", "source"):
-        print(f"\nBy {group_name}:")
-        groups = report[group_name]
-        if not groups:
-            print("  (none)")
-            continue
-        for group in groups:
-            name = group["name"] or "(uncategorized)"
-            print(f"  {name}: {group['count']}")
-
-    print("\nRecent records:")
-    if not report["recent"]:
-        print("  (none)")
-        return
-    for record in report["recent"]:
-        uploaded_at = record["uploaded_at"] or "unknown date"
-        video_id = record["youtube_video_id"] or "no video ID"
-        category = record["category"] or "uncategorized"
-        print(
-            f"  {uploaded_at} | {record['title']} | {category} | "
-            f"{record['status']} | {video_id}"
-        )
-
-
 def prompt_for_command() -> argparse.Namespace | None:
     def prompt_upload_mode() -> argparse.Namespace:
         while True:
@@ -74,7 +45,7 @@ def prompt_for_command() -> argparse.Namespace | None:
         if choice == "4":
             return argparse.Namespace(command="history-sync")
         if choice == "5":
-            return argparse.Namespace(command="history-report", limit=10)
+            return argparse.Namespace(command="history-report")
         if choice == "6":
             return argparse.Namespace(command="health-check")
         if choice == "q":
@@ -118,14 +89,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     report_parser = commands.add_parser(
         "history-report",
-        help="Show a local summary of upload history.",
-    )
-    report_parser.add_argument(
-        "--limit",
-        type=int,
-        default=10,
-        metavar="N",
-        help="Number of recent records to show (default: 10).",
+        help="Export the complete local upload history to Excel.",
     )
     commands.add_parser(
         "health-check",
@@ -169,10 +133,10 @@ def main() -> None:
         synchronizer.sync(youtube)
         logging.info("Upload history contains %s records.", repository.count())
     elif args.command == "history-report":
-        if args.limit < 0:
-            raise SystemExit("--limit must be zero or greater.")
         repository = UploadHistoryRepository(settings.history_db)
-        print_history_report(repository.report(args.limit))
+        output_path = settings.project_root / "upload_history.xlsx"
+        record_count = repository.export_to_excel(output_path)
+        print(f"Exported {record_count} upload history records to {output_path}")
 
 
 if __name__ == "__main__":

@@ -43,6 +43,30 @@ class YouTubeHistorySynchronizer:
                 break
         return records
 
+    def _playlist_memberships(
+        self, youtube: Any
+    ) -> dict[str, tuple[str, str]]:
+        memberships: dict[str, tuple[str, str]] = {}
+        for category, playlist_id in self.settings.playlists.items():
+            if not playlist_id:
+                continue
+            page_token = None
+            while True:
+                response = youtube.playlistItems().list(
+                    part="contentDetails",
+                    playlistId=playlist_id,
+                    maxResults=50,
+                    pageToken=page_token,
+                ).execute()
+                for item in response.get("items", []):
+                    video_id = item.get("contentDetails", {}).get("videoId")
+                    if video_id and video_id not in memberships:
+                        memberships[video_id] = (category, playlist_id)
+                page_token = response.get("nextPageToken")
+                if not page_token:
+                    break
+        return memberships
+
     @staticmethod
     def _file_hash(file_path: Path) -> str:
         digest = hashlib.sha256()
@@ -85,6 +109,7 @@ class YouTubeHistorySynchronizer:
 
     def sync(self, youtube: Any) -> int:
         youtube_items = self._list_uploads(youtube)
+        playlist_memberships = self._playlist_memberships(youtube)
         youtube_video_ids = {
             item.get("contentDetails", {}).get("videoId")
             for item in youtube_items
@@ -101,14 +126,28 @@ class YouTubeHistorySynchronizer:
             title = snippet.get("title", "")
             matching_files = local_by_title.get(title, [])
             local_file = matching_files[0] if len(matching_files) == 1 else None
+            existing_record = (
+                self.repository.find_by_video_id(video_id) if video_id else None
+            )
+            membership = playlist_memberships.get(video_id)
+            if local_file:
+                category = local_file.parent.name
+                playlist_id = self.settings.playlists.get(category)
+            elif membership:
+                category, playlist_id = membership
+            else:
+                category = existing_record["category"] if existing_record else None
+                playlist_id = (
+                    existing_record["playlist_id"] if existing_record else None
+                )
             record = {
                 "youtube_video_id": video_id,
                 "title": title,
                 "file_path": str(local_file) if local_file else None,
                 "file_hash": self._file_hash(local_file) if local_file else None,
                 "file_size": local_file.stat().st_size if local_file else None,
-                "category": local_file.parent.name if local_file else None,
-                "playlist_id": None,
+                "category": category,
+                "playlist_id": playlist_id,
                 "uploaded_at": snippet.get("publishedAt"),
                 "status": "uploaded",
                 "source": "youtube_sync",

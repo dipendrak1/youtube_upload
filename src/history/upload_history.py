@@ -1,8 +1,13 @@
 """SQLite persistence for uploaded video history."""
 
+import os
 from pathlib import Path
 import sqlite3
+import tempfile
 from typing import Any
+
+from openpyxl import Workbook
+from openpyxl.styles import Font
 
 
 class UploadHistoryRepository:
@@ -75,6 +80,94 @@ class UploadHistoryRepository:
         with self._connect() as connection:
             row = connection.execute("SELECT COUNT(*) AS count FROM uploads").fetchone()
         return int(row["count"])
+
+    def find_by_video_id(self, video_id: str) -> sqlite3.Row | None:
+        with self._connect() as connection:
+            return connection.execute(
+                "SELECT * FROM uploads WHERE youtube_video_id = ?",
+                (video_id,),
+            ).fetchone()
+
+    def export_to_excel(self, output_path: Path) -> int:
+        """Export every upload history record to an Excel workbook."""
+        database_columns = (
+            "id",
+            "youtube_video_id",
+            "title",
+            "file_path",
+            "file_hash",
+            "file_size",
+            "category",
+            "playlist_id",
+            "uploaded_at",
+            "status",
+            "source",
+        )
+        title_index = database_columns.index("title") + 1
+        columns = (
+            *database_columns[:title_index],
+            "video_url",
+            *database_columns[title_index:],
+        )
+        with self._connect() as connection:
+            rows = connection.execute(
+                f"SELECT {', '.join(database_columns)} FROM uploads "
+                "ORDER BY uploaded_at DESC, id DESC"
+            ).fetchall()
+
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.title = "Upload History"
+        worksheet.append(columns)
+        for cell in worksheet[1]:
+            cell.font = Font(bold=True)
+        for row in rows:
+            video_url = (
+                f"https://www.youtube.com/watch?v={row['youtube_video_id']}"
+                if row["youtube_video_id"]
+                else None
+            )
+            values = [row[column] for column in database_columns]
+            values.insert(title_index, video_url)
+            worksheet.append(values)
+
+        video_url_column = title_index + 1
+        for cell in next(
+            worksheet.iter_cols(
+                min_col=video_url_column,
+                max_col=video_url_column,
+                min_row=2,
+            ),
+            (),
+        ):
+            if cell.value:
+                cell.hyperlink = cell.value
+                cell.font = Font(color="0563C1", underline="single")
+
+        worksheet.freeze_panes = "A2"
+        worksheet.auto_filter.ref = worksheet.dimensions
+        for column_cells in worksheet.columns:
+            column_letter = column_cells[0].column_letter
+            max_length = max(len(str(cell.value or "")) for cell in column_cells)
+            worksheet.column_dimensions[column_letter].width = min(max_length + 2, 60)
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                dir=output_path.parent,
+                prefix=f".{output_path.stem}-",
+                suffix=output_path.suffix,
+                delete=False,
+            ) as temporary_file:
+                temporary_path = Path(temporary_file.name)
+            workbook.save(temporary_path)
+            os.replace(temporary_path, output_path)
+        finally:
+            if temporary_path and temporary_path.exists():
+                temporary_path.unlink()
+
+        return len(rows)
 
     def report(self, recent_limit: int = 10) -> dict[str, Any]:
         """Return aggregate counts and the most recent history records."""
