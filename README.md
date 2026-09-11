@@ -26,6 +26,21 @@ This application uploads local videos to YouTube playlists and downloads YouTube
 
 `Settings` owns paths and environment-backed configuration. `YouTubeUploader` owns OAuth, video uploads, playlist insertion, cleanup, and quota handling. `YouTubeDownloader` owns `yt-dlp` downloads. `main.py` orchestrates both services.
 
+## Categorize videos
+
+Place new video files directly in `videos/` and review their automatic
+orientation classification with:
+
+```powershell
+python main.py categorize
+```
+
+The classifier uses FFmpeg `ffprobe` to read dimensions and rotation metadata.
+Portrait and square videos are assigned to `videos/shorts/`; wider videos are
+assigned to `videos/landscape/`. The command only scans files directly inside
+`videos/`, leaves the existing category folders alone, shows a preview, and
+asks for confirmation before moving files.
+
 ## Prerequisites
 
 1. Install Python 3.11 or newer.

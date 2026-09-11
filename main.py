@@ -3,6 +3,7 @@
 import argparse
 import logging
 
+from src.categorize import VideoCategorizer
 from src.download import YouTubeDownloader
 from src.health import run_health_check
 from src.history import UploadHistoryRepository, YouTubeHistorySynchronizer
@@ -53,9 +54,10 @@ def prompt_for_command() -> argparse.Namespace | None:
         print("\nYouTube application")
         print("1. Upload videos")
         print("2. Download a video")
-        print("3. Synchronize upload history")
-        print("4. Show upload history report")
-        print("5. Run runtime health check")
+        print("3. Categorize videos")
+        print("4. Synchronize upload history")
+        print("5. Show upload history report")
+        print("6. Run runtime health check")
         print("q. Exit")
         choice = input("Choose an option: ").strip().lower()
 
@@ -68,14 +70,16 @@ def prompt_for_command() -> argparse.Namespace | None:
             print("A YouTube URL is required.")
             continue
         if choice == "3":
-            return argparse.Namespace(command="history-sync")
+            return argparse.Namespace(command="categorize")
         if choice == "4":
-            return argparse.Namespace(command="history-report", limit=10)
+            return argparse.Namespace(command="history-sync")
         if choice == "5":
+            return argparse.Namespace(command="history-report", limit=10)
+        if choice == "6":
             return argparse.Namespace(command="health-check")
         if choice == "q":
             return None
-        print("Enter 1, 2, 3, 4, 5, or q.")
+        print("Enter 1, 2, 3, 4, 5, 6, or q.")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -101,6 +105,11 @@ def build_parser() -> argparse.ArgumentParser:
         "download", help="Download a YouTube video."
     )
     download_parser.add_argument("url", help="YouTube URL to download.")
+
+    commands.add_parser(
+        "categorize",
+        help="Classify videos placed directly in the videos folder.",
+    )
 
     commands.add_parser(
         "history-sync",
@@ -141,7 +150,9 @@ def main() -> None:
         return
     settings = Settings.from_project_root()
 
-    if args.command == "health-check":
+    if args.command == "categorize":
+        VideoCategorizer(settings).run()
+    elif args.command == "health-check":
         if not run_health_check(settings):
             raise SystemExit(1)
     elif args.command == "upload":
