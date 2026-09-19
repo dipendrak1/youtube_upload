@@ -35,6 +35,13 @@ Implemented features include:
 5. Run `history-report` when an Excel report is needed.
 6. Run `history-sync` when YouTube history needs reconciliation.
 
+## Interactive Menu Updates
+
+- The main CLI menu continues to accept `1-6` and `q` selections.
+- Upload mode prompts now accept either `1/2` or `d/a` for dry-run vs. actual upload.
+- Post-upload cleanup prompts now accept either `1/2` or `b/d` for backup vs. delete.
+- Older letter-based inputs remain supported for compatibility.
+
 ## Important Behavior
 
 - Categorization scans only files directly inside `videos/`.

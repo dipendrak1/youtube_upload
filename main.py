@@ -14,12 +14,15 @@ from src.upload import YouTubeUploader
 def prompt_for_command() -> argparse.Namespace | None:
     def prompt_upload_mode() -> argparse.Namespace:
         while True:
-            mode = input("Run a dry run or actual upload? (d/a): ").strip().lower()
-            if mode == "d":
-                return argparse.Namespace(command="upload", dry_run=True)
-            if mode == "a":
+            print("\nRun a dry run or actual upload?")
+            print("1. Actual upload")
+            print("2. Dry run")
+            mode = input("Choose an option: ").strip().lower()
+            if mode in {"a", "1"}:
                 return argparse.Namespace(command="upload", dry_run=False)
-            print("Enter 'd' for dry run or 'a' for actual upload.")
+            if mode in {"d", "2"}:
+                return argparse.Namespace(command="upload", dry_run=True)
+            print("Enter 1 for actual upload or 2 for dry run.")
 
     while True:
         print("\nYouTube application")
@@ -27,7 +30,7 @@ def prompt_for_command() -> argparse.Namespace | None:
         print("2. Download a video")
         print("3. Categorize videos")
         print("4. Synchronize upload history")
-        print("5. Show upload history report")
+        print("5. Refresh upload history Excel report")
         print("6. Run runtime health check")
         print("q. Exit")
         choice = input("Choose an option: ").strip().lower()

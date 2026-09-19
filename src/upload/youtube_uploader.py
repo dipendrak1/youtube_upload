@@ -153,11 +153,12 @@ class YouTubeUploader:
 
     def _ask_cleanup_choice(self) -> bool:
         cleanup_choice = ""
-        while cleanup_choice not in ("b", "d"):
-            cleanup_choice = input(
-                "After a successful upload, move files to backup or delete them? (b/d): "
-            ).strip().lower()
-        return cleanup_choice == "b"
+        while cleanup_choice not in {"b", "d", "1", "2"}:
+            print("\nAfter a successful upload, move files to backup or delete them?")
+            print("1. Delete files")
+            print("2. Move files to backup")
+            cleanup_choice = input("Choose an option: ").strip().lower()
+        return cleanup_choice in {"b", "2"}
 
     @staticmethod
     def _file_hash(file_path: Path) -> str:
@@ -171,19 +172,34 @@ class YouTubeUploader:
         self, videos_to_upload: list[tuple[Path, str]]
     ) -> list[tuple[Path, str]]:
         while True:
-            choice = input(
-                "Upload all files or how many first files? (a or number): "
-            ).strip().lower()
-            if choice == "a":
+            print("\nUpload all files or how many first files?")
+            print("1. Upload all files")
+            print("2. Upload the first N files")
+            choice = input("Choose an option: ").strip().lower()
+
+            if choice in {"a", "1"}:
                 return videos_to_upload
+
+            if choice == "2":
+                count_input = input("How many first files? ").strip()
+                try:
+                    count = int(count_input)
+                except ValueError:
+                    print("Enter a whole number.")
+                    continue
+                if 1 <= count <= len(videos_to_upload):
+                    return videos_to_upload[:count]
+                print(f"Enter a number from 1 to {len(videos_to_upload)}.")
+                continue
+
             try:
                 count = int(choice)
             except ValueError:
-                print("Enter 'a' or a whole number.")
+                print("Enter 1 for all files, 2 for a limited count, or a whole number.")
                 continue
             if 1 <= count <= len(videos_to_upload):
                 return videos_to_upload[:count]
-            print(f"Enter 'a' or a number from 1 to {len(videos_to_upload)}.")
+            print(f"Enter 1, 2, or a number from 1 to {len(videos_to_upload)}.")
 
     @staticmethod
     def _remove_read_only(file_path: Path) -> None:
@@ -308,8 +324,11 @@ class YouTubeUploader:
             self._print_dry_run(videos_to_upload, move_to_backup)
             return
 
-        confirm = input("Start uploading? (y/n): ")
-        if confirm.lower() != "y":
+        print("\nStart uploading?")
+        print("1. Yes")
+        print("2. No")
+        confirm = input("Choose an option: ").strip().lower()
+        if confirm not in {"y", "1"}:
             print("Upload cancelled.")
             return
 
