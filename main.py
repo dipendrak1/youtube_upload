@@ -7,6 +7,7 @@ from src.categorize import VideoCategorizer
 from src.download import YouTubeDownloader
 from src.health import run_health_check
 from src.history import UploadHistoryRepository, YouTubeHistorySynchronizer
+from src.phone_import import PhoneVideoImporter
 from src.settings import Settings
 from src.upload import YouTubeUploader
 
@@ -26,34 +27,37 @@ def prompt_for_command() -> argparse.Namespace | None:
 
     while True:
         print("\nYouTube application")
-        print("1. Upload videos")
-        print("2. Download a video")
-        print("3. Categorize videos")
-        print("4. Synchronize upload history")
-        print("5. Refresh upload history Excel report")
-        print("6. Run runtime health check")
+        print("1. Import videos from phone")
+        print("2. Categorize videos")
+        print("3. Upload videos")
+        print("4. Download a video")
+        print("5. Synchronize upload history")
+        print("6. Refresh upload history Excel report")
+        print("7. Run runtime health check")
         print("q. Exit")
         choice = input("Choose an option: ").strip().lower()
 
         if choice == "1":
-            return prompt_upload_mode()
+            return argparse.Namespace(command="phone-import")
         if choice == "2":
+            return argparse.Namespace(command="categorize")
+        if choice == "3":
+            return prompt_upload_mode()
+        if choice == "4":
             url = input("Enter the YouTube URL: ").strip()
             if url:
                 return argparse.Namespace(command="download", url=url)
             print("A YouTube URL is required.")
             continue
-        if choice == "3":
-            return argparse.Namespace(command="categorize")
-        if choice == "4":
-            return argparse.Namespace(command="history-sync")
         if choice == "5":
-            return argparse.Namespace(command="history-report")
+            return argparse.Namespace(command="history-sync")
         if choice == "6":
+            return argparse.Namespace(command="history-report")
+        if choice == "7":
             return argparse.Namespace(command="health-check")
         if choice == "q":
             return None
-        print("Enter 1, 2, 3, 4, 5, 6, or q.")
+        print("Enter 1, 2, 3, 4, 5, 6, 7, or q.")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -98,6 +102,10 @@ def build_parser() -> argparse.ArgumentParser:
         "health-check",
         help="Check local runtime prerequisites.",
     )
+    commands.add_parser(
+        "phone-import",
+        help="Review and import videos from the connected phone.",
+    )
     return parser
 
 
@@ -140,6 +148,8 @@ def main() -> None:
         output_path = settings.project_root / "upload_history.xlsx"
         record_count = repository.export_to_excel(output_path)
         print(f"Exported {record_count} upload history records to {output_path}")
+    elif args.command == "phone-import":
+        PhoneVideoImporter(settings).run()
 
 
 if __name__ == "__main__":

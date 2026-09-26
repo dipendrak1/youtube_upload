@@ -18,6 +18,7 @@ class Settings:
     uploaded_dir: Path
     downloads_dir: Path
     history_db: Path
+    phone_camera_videos_dir: Path
     playlists: dict[str, str]
     allowed_extensions: tuple[str, ...] = (
         ".mp4",
@@ -32,6 +33,18 @@ class Settings:
     def from_project_root(cls, project_root: Path | None = None) -> "Settings":
         root = (project_root or Path(__file__).resolve().parent.parent).resolve()
         load_dotenv(root / ".env")
+        phone_dcim = Path(
+            os.getenv(
+                "PHONE_DCIM_DIR",
+                str(
+                    Path.home()
+                    / "CrossDevice"
+                    / "Dipendra's S25 Ultra"
+                    / "storage"
+                    / "DCIM"
+                ),
+            )
+        )
 
         return cls(
             project_root=root,
@@ -44,6 +57,9 @@ class Settings:
             uploaded_dir=root / "uploaded",
             downloads_dir=root / "downloads",
             history_db=root / "data" / "upload_history.db",
+            phone_camera_videos_dir=Path(
+                os.getenv("PHONE_CAMERA_VIDEOS_DIR", str(phone_dcim / "Camera_Videos"))
+            ),
             playlists={
                 "shorts": os.getenv("YOUTUBE_SHORTS_PLAYLIST_ID", ""),
                 "landscape": os.getenv("YOUTUBE_LANDSCAPE_PLAYLIST_ID", ""),

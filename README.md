@@ -41,6 +41,31 @@ assigned to `videos/landscape/`. The command only scans files directly inside
 `videos/`, leaves the existing category folders alone, shows a preview, and
 asks for confirmation before moving files.
 
+## Import videos from a phone
+
+Choose `Import videos from phone` from the startup menu, or run:
+
+```powershell
+python main.py phone-import
+```
+
+The importer scans `Camera_Videos` for supported video files, showing names
+and sizes while ignoring photos. Choose `a` to copy all files, or enter a
+number to copy the first N files in filename order. The importer then shows
+the source, destination, selected count, and total size for confirmation before
+copying into the top-level `videos/` folder. Each file gets byte-level progress, SHA-256
+verification, and a success, skip, or failure result. Existing files are never
+overwritten, and originals always remain on the phone. Move files between the
+phone folders manually if needed.
+
+Stage summaries and per-file outcomes are written to
+`logs/phone_import.log`. By default, the phone DCIM root is
+`%USERPROFILE%\CrossDevice\Dipendra's S25 Ultra\storage\DCIM`. Set
+`PHONE_DCIM_DIR` in `.env` to override the root, or set
+`PHONE_CAMERA_VIDEOS_DIR` to override the source folder. After import, run
+`categorize` to sort videos into shorts and landscape folders; importing never
+starts an upload.
+
 ## Prerequisites
 
 1. Install Python 3.11 or newer.
