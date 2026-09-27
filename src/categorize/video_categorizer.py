@@ -135,10 +135,17 @@ class VideoCategorizer:
             print("No files were moved.")
             return
 
-        confirm = input("Move these files to their categories? (y/n): ").strip().lower()
-        if confirm != "y":
-            print("Categorization cancelled.")
-            return
+        while True:
+            print("\nChoose an option:")
+            print("1. Yes")
+            print("2. No")
+            confirm = input("Choose an option: ").strip().lower()
+            if confirm in {"1", "y"}:
+                break
+            if confirm in {"2", "n"}:
+                print("Categorization cancelled.")
+                return
+            print("Enter 1 for Yes or 2 for No.")
 
         for item, destination in zip(classifications, destinations):
             destination.parent.mkdir(parents=True, exist_ok=True)

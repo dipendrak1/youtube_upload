@@ -152,13 +152,16 @@ class YouTubeUploader:
         return videos_to_upload
 
     def _ask_cleanup_choice(self) -> bool:
-        cleanup_choice = ""
-        while cleanup_choice not in {"b", "d", "1", "2"}:
-            print("\nAfter a successful upload, move files to backup or delete them?")
+        while True:
+            print("\nChoose an option:")
             print("1. Delete files")
             print("2. Move files to backup")
             cleanup_choice = input("Choose an option: ").strip().lower()
-        return cleanup_choice in {"b", "2"}
+            if cleanup_choice in {"1", "d"}:
+                return False
+            if cleanup_choice in {"2", "b"}:
+                return True
+            print("Enter 1 for delete or 2 for backup.")
 
     @staticmethod
     def _file_hash(file_path: Path) -> str:
@@ -324,13 +327,17 @@ class YouTubeUploader:
             self._print_dry_run(videos_to_upload, move_to_backup)
             return
 
-        print("\nStart uploading?")
-        print("1. Yes")
-        print("2. No")
-        confirm = input("Choose an option: ").strip().lower()
-        if confirm not in {"y", "1"}:
-            print("Upload cancelled.")
-            return
+        while True:
+            print("\nChoose an option:")
+            print("1. Yes")
+            print("2. No")
+            confirm = input("Choose an option: ").strip().lower()
+            if confirm in {"1", "y"}:
+                break
+            if confirm in {"2", "n"}:
+                print("Upload cancelled.")
+                return
+            print("Enter 1 for Yes or 2 for No.")
 
         file_hashes = {}
         new_videos = []

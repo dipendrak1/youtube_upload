@@ -4,8 +4,10 @@ from dataclasses import dataclass, field
 import hashlib
 import logging
 from pathlib import Path
+import sqlite3
 import tempfile
 
+from src.history import UploadHistoryRepository
 from src.settings import Settings
 
 
@@ -40,6 +42,17 @@ class PhoneVideoImporter:
                 )
             )
             self.logger.addHandler(handler)
+
+    def close(self) -> None:
+        for handler in self.logger.handlers[:]:
+            self.logger.removeHandler(handler)
+            handler.close()
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
 
     def _video_files(self, directory: Path) -> list[Path]:
         try:
@@ -115,11 +128,20 @@ class PhoneVideoImporter:
         for file_path in files:
             print(f"    {file_path.name}")
         print("  Phone originals will remain unchanged.")
-        try:
-            return input("Copy these files now? (y/n): ").strip().lower() == "y"
-        except KeyboardInterrupt:
-            print("\nCopy cancelled.")
-            return False
+        while True:
+            try:
+                print("\nChoose an option:")
+                print("1. Yes")
+                print("2. No")
+                choice = input("Choose an option: ").strip().lower()
+                if choice in {"1", "y"}:
+                    return True
+                if choice in {"2", "n"}:
+                    return False
+                print("Enter 1 for Yes or 2 for No.")
+            except KeyboardInterrupt:
+                print("\nCopy cancelled.")
+                return False
 
     @staticmethod
     def _sha256(path: Path) -> str:
@@ -149,18 +171,14 @@ class PhoneVideoImporter:
                         target_file.write(chunk)
                         digest.update(chunk)
                         copied_size += len(chunk)
-                        progress = (
-                            100.0
-                            if expected_size == 0
-                            else copied_size / expected_size * 100
-                        )
-                        print(
-                            f"\r  Copying {source.name}: {self._format_size(copied_size)}"
-                            f" / {self._format_size(expected_size)} ({progress:.0f}%)",
-                            end="",
-                            flush=True,
-                        )
-            print()
+                    progress = (
+                        100.0 if expected_size == 0 else copied_size / expected_size * 100
+                    )
+                    print(
+                        f"  Copying {source.name}: {self._format_size(copied_size)}"
+                        f" / {self._format_size(expected_size)} ({progress:.0f}%)",
+                        flush=True,
+                    )
             if copied_size != expected_size or self._sha256(temp_path) != digest.hexdigest():
                 raise OSError("copied file did not pass size and SHA-256 verification")
             if destination.exists():
@@ -171,12 +189,25 @@ class PhoneVideoImporter:
             if temp_path is not None:
                 temp_path.unlink(missing_ok=True)
 
+    def _already_uploaded(self, source: Path) -> sqlite3.Row | None:
+        repository = UploadHistoryRepository(self.settings.history_db)
+        try:
+            for candidate in (source.stem, source.name):
+                existing = repository.find_successful_by_title(candidate)
+                if existing is not None:
+                    return existing
+            return None
+        finally:
+            repository.close()
+
     def _transfer(
         self, source: Path, destination: Path
     ) -> tuple[str, str]:
         try:
             if destination.exists():
                 return "skipped", "destination already exists; source left unchanged"
+            if self._already_uploaded(source):
+                return "skipped", "already uploaded in history database; source left unchanged"
 
             self._copy_and_verify(source, destination)
             return "succeeded", "copied and verified"
@@ -211,6 +242,24 @@ class PhoneVideoImporter:
             self.logger.info("Copy cancelled")
             return result
         selected_files, selection_label = selection
+        filtered_files: list[Path] = []
+        for file_path in selected_files:
+            if self._already_uploaded(file_path):
+                result.skipped += 1
+                self.logger.info(
+                    "Skipping already uploaded file %s during phone import",
+                    file_path.name,
+                )
+                print(f"  Skipped: {file_path.name} already uploaded in history database.")
+                continue
+            filtered_files.append(file_path)
+
+        if not filtered_files:
+            print("After: No new files to copy; all selected videos were already uploaded.")
+            self.logger.info("No new files left to copy after upload-history dedupe")
+            return result
+
+        selected_files = filtered_files
         selected_names = ", ".join(file_path.name for file_path in selected_files)
         self.logger.info("Selected for copy (%s): %s", selection_label, selected_names)
         if not self._confirm_copy(selected_files, selection_label):

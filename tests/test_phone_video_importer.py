@@ -8,6 +8,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 from unittest.mock import patch
 
+from src.history import UploadHistoryRepository
 from src.phone_import import PhoneVideoImporter
 from src.settings import Settings
 
@@ -26,7 +27,7 @@ class PhoneVideoImporterTests(unittest.TestCase):
                 Settings.from_project_root(root),
                 phone_camera_videos_dir=phone_videos,
             )
-            with patch("builtins.input", side_effect=["a", "y"]):
+            with patch("builtins.input", side_effect=["a", "1"]):
                 PhoneVideoImporter(settings).run()
 
             self.assertTrue(source.exists())
@@ -47,7 +48,7 @@ class PhoneVideoImporterTests(unittest.TestCase):
                 phone_camera_videos_dir=phone_videos,
             )
             output = StringIO()
-            with patch("builtins.input", side_effect=["2", "y"]):
+            with patch("builtins.input", side_effect=["2", "1"]):
                 with redirect_stdout(output):
                     PhoneVideoImporter(settings).run()
 
@@ -69,6 +70,63 @@ class PhoneVideoImporterTests(unittest.TestCase):
             selected_listing = output.getvalue().split("Selected videos:\n", 1)[1]
             selected_listing = selected_listing.split("\n  Phone originals", 1)[0]
             self.assertNotIn("03-third.mp4", selected_listing)
+
+    def test_copy_progress_is_not_repeated_for_every_chunk(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            source = root / "progress-test.mp4"
+            source.write_bytes(b"x" * 2048)
+            destination = root / "progress-test-copy.mp4"
+            importer = PhoneVideoImporter.__new__(PhoneVideoImporter)
+            importer.CHUNK_SIZE = 128
+
+            output = StringIO()
+            with redirect_stdout(output):
+                importer._copy_and_verify(source, destination)
+
+            self.assertLessEqual(output.getvalue().count("Copying progress-test.mp4:"), 1)
+
+    def test_skips_source_when_video_is_already_uploaded(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            phone_videos = root / "phone" / "Camera_Videos"
+            phone_videos.mkdir(parents=True)
+            source = phone_videos / "already-uploaded.mp4"
+            source.write_bytes(b"uploaded bytes")
+            destination = root / "videos" / "already-uploaded.mp4"
+
+            settings = replace(
+                Settings.from_project_root(root),
+                phone_camera_videos_dir=phone_videos,
+            )
+            history = UploadHistoryRepository(settings.history_db)
+            try:
+                history.upsert(
+                    {
+                        "youtube_video_id": "abc123",
+                        "title": "already-uploaded",
+                        "file_path": str(destination),
+                        "file_hash": "hash-does-not-matter",
+                        "file_size": len(b"uploaded bytes"),
+                        "category": "shorts",
+                        "playlist_id": "playlist",
+                        "uploaded_at": "2026-01-01T00:00:00+00:00",
+                        "status": "uploaded",
+                        "source": "phone-import",
+                    }
+                )
+            finally:
+                history.close()
+            importer = PhoneVideoImporter(settings)
+            try:
+                outcome, detail = importer._transfer(source, destination)
+            finally:
+                importer.close()
+
+            self.assertEqual(outcome, "skipped")
+            self.assertIn("already uploaded", detail.lower())
+            self.assertFalse(destination.exists())
+            self.assertEqual(source.read_bytes(), b"uploaded bytes")
 
     def test_conflicting_destination_is_not_overwritten(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

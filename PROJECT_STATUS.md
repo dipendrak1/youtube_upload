@@ -43,7 +43,7 @@ Implemented features include:
 - The main CLI menu orders phone import, categorization, and upload as options `1-3`, followed by download, history sync, history report, and health check; it accepts `1-7` and `q` selections.
 - Upload mode prompts now accept either `1/2` or `d/a` for dry-run vs. actual upload.
 - Post-upload cleanup prompts now accept either `1/2` or `b/d` for backup vs. delete.
-- Older letter-based inputs remain supported for compatibility.
+- Boolean confirmations now present numbered 1/2 choices such as “1. Yes / 2. No,” while older letter-based inputs remain supported for compatibility.
 
 ## Important Behavior
 

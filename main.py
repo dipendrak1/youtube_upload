@@ -19,9 +19,9 @@ def prompt_for_command() -> argparse.Namespace | None:
             print("1. Actual upload")
             print("2. Dry run")
             mode = input("Choose an option: ").strip().lower()
-            if mode in {"a", "1"}:
+            if mode in {"1", "a"}:
                 return argparse.Namespace(command="upload", dry_run=False)
-            if mode in {"d", "2"}:
+            if mode in {"2", "d"}:
                 return argparse.Namespace(command="upload", dry_run=True)
             print("Enter 1 for actual upload or 2 for dry run.")
 

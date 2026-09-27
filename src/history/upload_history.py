@@ -16,12 +16,26 @@ class UploadHistoryRepository:
     def __init__(self, database_path: Path) -> None:
         self.database_path = database_path
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
+        self._connection: sqlite3.Connection | None = sqlite3.connect(self.database_path)
+        self._connection.row_factory = sqlite3.Row
         self._create_schema()
 
+    def close(self) -> None:
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
+
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.database_path)
-        connection.row_factory = sqlite3.Row
-        return connection
+        if self._connection is None:
+            self._connection = sqlite3.connect(self.database_path)
+            self._connection.row_factory = sqlite3.Row
+        return self._connection
 
     def _create_schema(self) -> None:
         with self._connect() as connection:
